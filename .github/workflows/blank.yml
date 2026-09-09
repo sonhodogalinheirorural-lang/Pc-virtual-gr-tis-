@@ -27,11 +27,11 @@ jobs:
           qemu-img create -f qcow2 windows10_hd.qcow2 40G
           
           echo "Baixando Drivers VirtIO (Evita erro de tela preta e reconhece o HD)..."
-          wget -O virtio-win.iso "https://fedorapeople.org"
+          wget -q --show-progress -O virtio-win.iso "https://fedorapeople.org"
 
           echo "Baixando imagem oficial do Windows 10 Completo em Português (Brasil)..."
-          # Link alternativo direto e de alta velocidade para a ISO do Windows 10 PT-BR x64
-          curl -L -o windows10_ptbr.iso "https://microsoft.com"
+          # Link direto e otimizado para servidores do repositório Massgrave (Altíssima velocidade)
+          wget -q --show-progress -O windows10_ptbr.iso "https://massgrave.dev"
 
       - name: Inicializar Windows 10 em Português com Servidor VNC
         run: |
