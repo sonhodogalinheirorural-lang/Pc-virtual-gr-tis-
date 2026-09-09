@@ -30,11 +30,30 @@ jobs:
           wget -O virtio-win.iso "https://fedorapeople.org"
 
           echo "Baixando imagem oficial do Windows 10 Completo em Português (Brasil)..."
-          # Link direto e permanente de alta velocidade hospedado em repositório acadêmico parceiro da Microsoft
+          # Link direto para a ISO estável do Windows 10 22H2 PT-BR hospedada no Archive.org
           wget -O windows10_ptbr.iso "https://archive.org"
 
       - name: Inicializar Windows 10 em Português com Servidor VNC
         run: |
+          echo "=== INICIANDO O PC VIRTUAL COM WINDOWS 10 PT-BR ==="
+          echo "Abra o seu VNC Viewer no novo IP do Tailscale na porta 5900."
+          
+          # Executa o QEMU acoplando a ISO em português e o CD de drivers para o boot funcionar de primeira
+          # O Servidor VNC fica aberto em ':0' (Porta local 5900) escutando o IP do Tailscale
+          sudo qemu-system-x86_64 \
+            -m 6144 \
+            -smp 2 \
+            -cpu host \
+            -enable-kvm \
+            -hda windows10_hd.qcow2 \
+            -cdrom windows10_ptbr.iso \
+            -drive file=virtio-win.iso,media=cdrom,index=1 \
+            -boot d \
+            -vnc :0 \
+            -vga std \
+            -device e1000,netdev=net0 \
+            -netdev user,id=net0
+            run: |
           echo "=== INICIANDO O PC VIRTUAL COM WINDOWS 10 PT-BR ==="
           echo "Abra o seu VNC Viewer no novo IP do Tailscale na porta 5900."
           
