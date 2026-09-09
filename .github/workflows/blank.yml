@@ -30,8 +30,8 @@ jobs:
           wget -q --show-progress -O virtio-win.iso "https://fedorapeople.org"
 
           echo "Baixando imagem oficial do Windows 10 Completo em Português (Brasil)..."
-          # Link direto e otimizado para servidores do repositório Massgrave (Altíssima velocidade)
-          wget -q --show-progress -O windows10_ptbr.iso "https://massgrave.dev"
+          # Link direto de servidor mirror brasileiro estável (Sem travas de download)
+          wget -q --show-progress -O windows10_ptbr.iso "https://ehs.eti.br"
 
       - name: Inicializar Windows 10 em Português com Servidor VNC
         run: |
