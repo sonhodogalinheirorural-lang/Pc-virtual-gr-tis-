@@ -1,11 +1,11 @@
-name: Windows 10 Virtual no GitHub
+name: Windows 10 Virtual Completo
 
 on:
-  workflow_dispatch: # Permite que você ative o botão "Run workflow" manualmente
+  workflow_dispatch: # Ativa o botão manual no GitHub
 
 jobs:
   rodar-windows:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # Hardware do GitHub que vai carregar o emulador do Windows
     steps:
       - name: Baixar Código do Repositório
         uses: actions/checkout@v4
@@ -16,31 +16,37 @@ jobs:
 
       - name: Autenticar no Tailscale
         env:
-          TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+          TAILSCALE_AUTHKEY: ${{ secrets.TAILSSCALE_AUTH_KEY }}
         run: |
-          # Conecta este servidor do GitHub à sua rede Tailscale
+          # Conecta a máquina à sua rede privada do Tailscale
           sudo tailscale up --authkey=$TAILSCALE_AUTHKEY
 
-      - name: Inicializar e Buildar o Windows 10 com VNC e RDP
+      - name: Inicializar o Windows 10 com VNC (Senha) e Windows App (RDP)
         run: |
-          echo "=== INICIANDO CONTEINER DO WINDOWS 10 ==="
-          echo "Aguarde o download automático da imagem oficial..."
+          echo "=== INICIANDO INSTALAÇÃO DO WINDOWS 10 COMPLETO ==="
           
-          # Inicia o Windows alocando 6GB de RAM e 2 núcleos de processamento
-          # VERSION=10 baixa automaticamente o Windows 10
-          # Portas abertas: 8006 (Interface Web/VNC), 3389 (RDP para o Windows App)
-          sudo docker run -d --name windows \
+          # Explicação dos parâmetros configurados abaixo:
+          # - VERSION="10": Carrega o Windows 10 oficial completo.
+          # - VNC_PASS="123456": MUDE ESTA SENHA para a senha que você deseja usar no VNC Viewer.
+          # - RAM_SIZE e CPU_CORES: Recursos para o Windows rodar sem travar.
+          # - Portas: 8006 (VNC no navegador), 5900 (VNC de aplicativo), 3389 (Windows App/RDP).
+          
+          sudo docker run -d --name windows_pc \
             --device=/dev/kvm \
             --cap-add=NET_ADMIN \
             -p 8006:8006 \
+            -p 5900:5900 \
             -p 3389:3389 \
             -e VERSION="10" \
+            -e VNC_PASS="123456" \
             -e RAM_SIZE="6G" \
             -e CPU_CORES="2" \
             --restart on-failure \
             dockur/windows
-            
-          echo "=== MAQUINA PRONTA PARA CONEXAO ==="
-          echo "Acompanhe o status do container..."
-          sudo docker logs -f windows
+
+          echo "=== AGUARDANDO REQUISITOS DO SISTEMA ==="
+          echo "Conecte-se usando o IP do Tailscale exibido no seu painel."
+          
+          # Mantém a janela do GitHub aberta e monitorando o boot do Windows
+          sudo docker logs -f windows_pc
           
