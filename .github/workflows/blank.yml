@@ -1,0 +1,46 @@
+name: Windows 10 Virtual no GitHub
+
+on:
+  workflow_dispatch: # Permite que você ative o botão "Run workflow" manualmente
+
+jobs:
+  rodar-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar Código do Repositório
+        uses: actions/checkout@v4
+
+      - name: Baixar e Configurar Tailscale
+        run: |
+          curl -fsSL https://tailscale.com | sh
+
+      - name: Autenticar no Tailscale
+        env:
+          TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+        run: |
+          # Conecta este servidor do GitHub à sua rede Tailscale
+          sudo tailscale up --authkey=$TAILSCALE_AUTHKEY
+
+      - name: Inicializar e Buildar o Windows 10 com VNC e RDP
+        run: |
+          echo "=== INICIANDO CONTEINER DO WINDOWS 10 ==="
+          echo "Aguarde o download automático da imagem oficial..."
+          
+          # Inicia o Windows alocando 6GB de RAM e 2 núcleos de processamento
+          # VERSION=10 baixa automaticamente o Windows 10
+          # Portas abertas: 8006 (Interface Web/VNC), 3389 (RDP para o Windows App)
+          sudo docker run -d --name windows \
+            --device=/dev/kvm \
+            --cap-add=NET_ADMIN \
+            -p 8006:8006 \
+            -p 3389:3389 \
+            -e VERSION="10" \
+            -e RAM_SIZE="6G" \
+            -e CPU_CORES="2" \
+            --restart on-failure \
+            dockur/windows
+            
+          echo "=== MAQUINA PRONTA PARA CONEXAO ==="
+          echo "Acompanhe o status do container..."
+          sudo docker logs -f windows
+          
