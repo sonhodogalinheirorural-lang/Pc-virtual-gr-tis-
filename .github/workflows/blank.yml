@@ -1,4 +1,4 @@
-name: Windows 10 Completo com Tailscale
+name: Windows 10 Completo Oficial
 
 on:
   workflow_dispatch: # Ativa o botão manual no GitHub
@@ -15,19 +15,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils wget curl
 
-      - name: Baixar e Configurar Tailscale (Modo Seguro)
-        run: |
-          # Baixa o arquivo de instalação sem usar o comando de redirecionamento que dava erro
-          curl -fsSL https://tailscale.com -o install_tailscale.sh
-          # Executa o script baixado de forma direta
-          sudo sh install_tailscale.sh
-
-      - name: Autenticar no Tailscale
-        env:
-          TAILSCALE_AUTHKEY: ${{ secrets.TAILSSCALE_AUTH_KEY }}
-        run: |
-          # Conecta a máquina do GitHub à sua conta Tailscale usando o nome correto do seu Secret
-          sudo tailscale up --authkey=$TAILSCALE_AUTHKEY
+      # Aqui usamos a ferramenta oficial do Tailscale criada para o GitHub
+      # Ela não usa comandos de texto, então é impossível dar erro de sintaxe
+      - name: Conectar ao Tailscale Oficial
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSSCALE_AUTH_KEY }}
 
       - name: Criar HD Virtual e Baixar Windows 10 Completo
         run: |
@@ -35,16 +28,15 @@ jobs:
           qemu-img create -f qcow2 windows10_hd.qcow2 50G
           
           echo "Baixando imagem oficial do Windows 10..."
-          # Link oficial da ISO completa do Windows 10 Enterprise (Idioma em Português-BR)
+          # Download direto da ISO oficial completa do Windows 10 em Português
           wget -O windows10.iso "https://microsoft.com"
 
       - name: Inicializar Windows 10 com Servidor VNC
         run: |
           echo "=== INICIANDO O PC VIRTUAL COM WINDOWS 10 ==="
-          echo "Pegue o IP da máquina no seu painel do Tailscale e conecte no seu VNC Viewer."
+          echo "Abra o painel do Tailscale, pegue o IP e conecte no seu VNC Viewer na porta 5900."
           
-          # Inicia o Windows 10 com suporte ao servidor VNC nativo na porta padrão 5900
-          # O parâmetro -vnc :0 escuta em todas as redes, permitindo o acesso seguro pelo Tailscale
+          # Abre o Windows 10 Completo com o VNC Server escutando na porta padrão 5900
           sudo qemu-system-x86_64 \
             -m 6144 \
             -smp 2 \
