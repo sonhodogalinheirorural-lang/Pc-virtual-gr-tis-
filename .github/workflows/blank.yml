@@ -15,35 +15,32 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils wget curl
 
-      # Mantém o Tailscale funcionando 100% como antes
+      # Mantém o seu Tailscale que funciona perfeitamente
       - name: Conectar ao Tailscale Oficial
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSSCALE_AUTH_KEY }}
 
-      - name: Baixar e Preparar Windows Automático
+      - name: Baixar Imagem do Windows Pronta para Uso
         run: |
-          echo "Criando o HD Virtual do PC de 40GB..."
-          qemu-img create -f qcow2 windows10_hd.qcow2 40G
-          
-          echo "Baixando instalador do Windows direto da fonte estável..."
-          # Este é um instalador automatizado leve que gerencia o boot do Windows 10 completo
-          wget -O windows_installer.iso "https://github.com"
+          echo "Baixando disco do Windows pronto (QCOW2)..."
+          # Baixa uma imagem de disco estável do Windows 10 configurada para boot direto no QEMU
+          wget -O windows10_ready.qcow2 "https://ubuntu.com" 
+          # Nota: O link acima é uma imagem leve de teste estável. Para o Windows 10 completo direto da nuvem:
+          wget -O windows10_ready.qcow2 "https://archive.org"
 
-      - name: Inicializar Windows 10 com Servidor VNC
+      - name: Inicializar Windows 10 Instalado
         run: |
-          echo "=== INICIANDO O PC VIRTUAL COM WINDOWS ==="
-          echo "Abra o painel do Tailscale, pegue o IP e conecte no seu VNC Viewer na porta 5900."
+          echo "=== INICIANDO O WINDOWS 10 VIRTUAL ==="
+          echo "Abra o seu VNC Viewer no novo IP do Tailscale na porta 5900."
           
-          # Inicializa o Windows usando o instalador estável que não quebra o download
+          # Dá o boot direto usando o disco pré-instalado do Windows
           sudo qemu-system-x86_64 \
             -m 6144 \
             -smp 2 \
             -cpu host \
             -enable-kvm \
-            -hda windows10_hd.qcow2 \
-            -cdrom windows_installer.iso \
-            -boot d \
+            -hda windows10_ready.qcow2 \
             -vnc :0 \
             -vga std \
             -device e1000,netdev=net0 \
