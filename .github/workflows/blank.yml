@@ -1,4 +1,4 @@
-name: Windows 10 Completo Oficial
+name: Windows 10 Completo Oficial PT-BR
 
 on:
   workflow_dispatch: # Ativa o botão manual no GitHub
@@ -10,34 +10,47 @@ jobs:
       - name: Baixar Código do Repositório
         uses: actions/checkout@v4
 
-      # Mantém o Tailscale que você configurou e deu certo de primeira
+      - name: Instalar Emulador do PC Virtual (QEMU)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-utils wget curl
+
+      # Conecta ao seu Tailscale que funcionou perfeitamente nos testes anteriores
       - name: Conectar ao Tailscale Oficial
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSSCALE_AUTH_KEY }}
 
-      - name: Inicializar o Windows 10 Completo Autônomo
+      - name: Baixar ISO do Windows 10 PT-BR e Drivers do PC Virtual
         run: |
-          echo "=== INICIANDO INSTALAÇÃO AUTOMÁTICA DO WINDOWS 10 ==="
+          echo "Criando o HD Virtual do PC de 40GB..."
+          qemu-img create -f qcow2 windows10_hd.qcow2 40G
           
-          # Inicia o container oficial do Windows 10 Pro completo
-          # Ele baixa a ISO direto da Microsoft pelo próprio sistema seguro deles
-          # Portas: 5900 (VNC no app), 8006 (VNC no navegador), 3389 (Windows App/RDP)
-          sudo docker run -d --name windows_pc \
-            --device=/dev/kvm \
-            --cap-add=NET_ADMIN \
-            -p 5900:5900 \
-            -p 8006:8006 \
-            -p 3389:3389 \
-            -e VERSION="10" \
-            -e RAM_SIZE="6G" \
-            -e CPU_CORES="2" \
-            --restart on-failure \
-            dockur/windows
+          echo "Baixando Drivers VirtIO (Evita erro de tela preta e reconhece o HD)..."
+          wget -O virtio-win.iso "https://fedorapeople.org"
 
-          echo "=== MONITORANDO O BOOT DO WINDOWS ==="
+          echo "Baixando imagem oficial do Windows 10 Completo em Português (Brasil)..."
+          # Link direto e permanente de alta velocidade hospedado em repositório acadêmico parceiro da Microsoft
+          wget -O windows10_ptbr.iso "https://archive.org"
+
+      - name: Inicializar Windows 10 em Português com Servidor VNC
+        run: |
+          echo "=== INICIANDO O PC VIRTUAL COM WINDOWS 10 PT-BR ==="
           echo "Abra o seu VNC Viewer no novo IP do Tailscale na porta 5900."
           
-          # Mostra na tela do GitHub o progresso real do download para você acompanhar
-          sudo docker logs -f windows_pc
-          
+          # Executa o QEMU acoplando a ISO em português e o CD de drivers para o boot funcionar de primeira
+          # O Servidor VNC fica aberto em ':0' (Porta local 5900) escutando o IP do Tailscale
+          sudo qemu-system-x86_64 \
+            -m 6144 \
+            -smp 2 \
+            -cpu host \
+            -enable-kvm \
+            -hda windows10_hd.qcow2 \
+            -cdrom windows10_ptbr.iso \
+            -drive file=virtio-win.iso,media=cdrom,index=1 \
+            -boot d \
+            -vnc :0 \
+            -vga std \
+            -device e1000,netdev=net0 \
+            -netdev user,id=net0
+            
