@@ -1,7 +1,7 @@
-name: Windows 10 Virtual Completo
+name: Windows 10 Completo Original
 
 on:
-  workflow_dispatch: # Ativa o botão manual no GitHub
+  workflow_dispatch:
 
 jobs:
   rodar-windows:
@@ -10,44 +10,55 @@ jobs:
       - name: Baixar Código do Repositório
         uses: actions/checkout@v4
 
-      - name: Baixar e Configurar Tailscale
+      - name: Instalar Emulador QEMU e Dependências
         run: |
-          # Adiciona o repositório oficial e instala o Tailscale sem usar redirecionamento de comando
           sudo apt-get update
-          sudo apt-get install -y curl
-          curl -fsSL https://tailscale.com | sudo gpg --dearmor -o /usr/share/keyrings/tailscale-archive-keyring.gpg
-          curl -fsSL https://tailscale.com | sudo tee /usr/share/keyrings/tailscale-archive-keyring.list
-          sudo apt-get update
-          sudo apt-get install -y tailscale
+          sudo apt-get install -y qemu-system-x86 qemu-utils curl
 
-      - name: Autenticar no Tailscale
+      - name: Instalar Ngrok para Conexão Externa
+        run: |
+          curl -s https://amazonaws.com | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt-get update && sudo apt-get install -y ngrok
+
+      - name: Autenticar e Ligar Túnel do Ngrok
         env:
-          TAILSCALE_AUTHKEY: ${{ secrets.TAILSSCALE_AUTH_KEY }}
+          NGROK_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
         run: |
-          # Conecta a máquina à sua rede privada do Tailscale
-          sudo tailscale up --authkey=$TAILSCALE_AUTHKEY
+          # Ativa o seu token e abre as portas 5900 (VNC) e 3389 (Windows App) para a internet
+          ngrok config add-authtoken $NGROK_TOKEN
+          ngrok tcp 5900 --log=stdout &
+          ngrok tcp 3389 --log=stdout &
 
-      - name: Inicializar o Windows 10 com VNC (Senha) e Windows App (RDP)
+      - name: Baixar ISO do Windows 10 e Criar Disco Completo
         run: |
-          echo "=== INICIANDO INSTALAÇÃO DO WINDOWS 10 COMPLETO ==="
+          echo "Criando o Disco Rígido Virtual de 60GB..."
+          qemu-img create -f qcow2 windows10_hd.qcow2 60G
           
-          # Altere o valor abaixo em VNC_PASS para colocar a sua senha personalizada
-          sudo docker run -d --name windows_pc \
-            --device=/dev/kvm \
-            --cap-add=NET_ADMIN \
-            -p 8006:8006 \
-            -p 5900:5900 \
-            -p 3389:3389 \
-            -e VERSION="10" \
-            -e VNC_PASS="123456" \
-            -e RAM_SIZE="6G" \
-            -e CPU_CORES="2" \
-            --restart on-failure \
-            dockur/windows
+          echo "Baixando imagem oficial do Windows 10..."
+          # Este link baixa uma versão estável e completa do Windows 10 direto nos servidores do GitHub
+          wget -O windows10.iso "https://microsoft.com"
 
-          echo "=== AGUARDANDO REQUISITOS DO SISTEMA ==="
-          echo "Conecte-se usando o IP do Tailscale exibido no seu painel."
+      - name: Inicializar Windows 10 Completo com Servidor VNC
+        run: |
+          echo "=== INICIANDO O BOOT DO WINDOWS 10 COMPLETO ==="
+          echo "Acesse o painel do Ngrok na aba 'Endpoints' para pegar o link do VNC."
           
-          # Mantém o log ativo para você acompanhar a inicialização
-          sudo docker logs -f windows_pc
-          
+          # Executa o PC Virtual com hardware máximo do GitHub (6GB RAM e 2 CPUs)
+          # -vnc :0,password=on ativa o servidor VNC nativo exigindo senha
+          # -monitor stdio permite enviar comandos para a máquina se necessário
+          sudo qemu-system-x86_64 \
+            -m 6144 \
+            -smp 2 \
+            -cpu host \
+            -enable-kvm \
+            -hda windows10_hd.qcow2 \
+            -cdrom windows10.iso \
+            -boot d \
+            -vnc :0,password=on \
+            -vga std \
+            -device e1000,netdev=net0 \
+            -netdev user,id=net0 \
+            -monitor stdio <<EOF
+          change vnc password 123456
+          EOF
