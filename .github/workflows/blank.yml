@@ -5,14 +5,20 @@ on:
 
 jobs:
   rodar-windows:
-    runs-on: ubuntu-latest # Hardware do GitHub que vai carregar o emulador do Windows
+    runs-on: ubuntu-latest
     steps:
       - name: Baixar Código do Repositório
         uses: actions/checkout@v4
 
       - name: Baixar e Configurar Tailscale
         run: |
-          curl -fsSL https://tailscale.com | sh
+          # Adiciona o repositório oficial e instala o Tailscale sem usar redirecionamento de comando
+          sudo apt-get update
+          sudo apt-get install -y curl
+          curl -fsSL https://tailscale.com | sudo gpg --dearmor -o /usr/share/keyrings/tailscale-archive-keyring.gpg
+          curl -fsSL https://tailscale.com | sudo tee /usr/share/keyrings/tailscale-archive-keyring.list
+          sudo apt-get update
+          sudo apt-get install -y tailscale
 
       - name: Autenticar no Tailscale
         env:
@@ -25,12 +31,7 @@ jobs:
         run: |
           echo "=== INICIANDO INSTALAÇÃO DO WINDOWS 10 COMPLETO ==="
           
-          # Explicação dos parâmetros configurados abaixo:
-          # - VERSION="10": Carrega o Windows 10 oficial completo.
-          # - VNC_PASS="123456": MUDE ESTA SENHA para a senha que você deseja usar no VNC Viewer.
-          # - RAM_SIZE e CPU_CORES: Recursos para o Windows rodar sem travar.
-          # - Portas: 8006 (VNC no navegador), 5900 (VNC de aplicativo), 3389 (Windows App/RDP).
-          
+          # Altere o valor abaixo em VNC_PASS para colocar a sua senha personalizada
           sudo docker run -d --name windows_pc \
             --device=/dev/kvm \
             --cap-add=NET_ADMIN \
@@ -47,6 +48,6 @@ jobs:
           echo "=== AGUARDANDO REQUISITOS DO SISTEMA ==="
           echo "Conecte-se usando o IP do Tailscale exibido no seu painel."
           
-          # Mantém a janela do GitHub aberta e monitorando o boot do Windows
+          # Mantém o log ativo para você acompanhar a inicialização
           sudo docker logs -f windows_pc
           
