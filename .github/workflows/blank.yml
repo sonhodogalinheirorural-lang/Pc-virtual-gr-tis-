@@ -1,4 +1,4 @@
-name: Windows 10 Completo Original
+name: Windows 10 Original Completo
 
 on:
   workflow_dispatch:
@@ -10,43 +10,26 @@ jobs:
       - name: Baixar Código do Repositório
         uses: actions/checkout@v4
 
-      - name: Instalar Emulador QEMU e Dependências
+      - name: Instalar Emulador do PC Virtual
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 qemu-utils curl
+          sudo apt-get install -y qemu-system-x86 qemu-utils wget
 
-      - name: Instalar Ngrok para Conexão Externa
+      - name: Criar HD Virtual e Baixar Windows 10 Completo
         run: |
-          curl -s https://amazonaws.com | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-          echo "deb https://amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-          sudo apt-get update && sudo apt-get install -y ngrok
-
-      - name: Autenticar e Ligar Túnel do Ngrok
-        env:
-          NGROK_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-        run: |
-          # Ativa o seu token e abre as portas 5900 (VNC) e 3389 (Windows App) para a internet
-          ngrok config add-authtoken $NGROK_TOKEN
-          ngrok tcp 5900 --log=stdout &
-          ngrok tcp 3389 --log=stdout &
-
-      - name: Baixar ISO do Windows 10 e Criar Disco Completo
-        run: |
-          echo "Criando o Disco Rígido Virtual de 60GB..."
-          qemu-img create -f qcow2 windows10_hd.qcow2 60G
+          echo "Criando o HD Virtual do PC de 50GB..."
+          qemu-img create -f qcow2 windows10_hd.qcow2 50G
           
           echo "Baixando imagem oficial do Windows 10..."
-          # Este link baixa uma versão estável e completa do Windows 10 direto nos servidores do GitHub
+          # Link direto da ISO oficial completa do Windows 10 Enterprise
           wget -O windows10.iso "https://microsoft.com"
 
-      - name: Inicializar Windows 10 Completo com Servidor VNC
+      - name: Gerar Link do VNC e Iniciar Windows
         run: |
-          echo "=== INICIANDO O BOOT DO WINDOWS 10 COMPLETO ==="
-          echo "Acesse o painel do Ngrok na aba 'Endpoints' para pegar o link do VNC."
+          echo "=== INICIANDO O PC VIRTUAL COM WINDOWS 10 ==="
           
-          # Executa o PC Virtual com hardware máximo do GitHub (6GB RAM e 2 CPUs)
-          # -vnc :0,password=on ativa o servidor VNC nativo exigindo senha
-          # -monitor stdio permite enviar comandos para a máquina se necessário
+          # Liga o Windows 10 com o máximo de potência do servidor do GitHub (6GB RAM e 2 CPUs)
+          # O Servidor VNC nativo é ativado na porta local 5900 sem senha para facilitar seu primeiro acesso
           sudo qemu-system-x86_64 \
             -m 6144 \
             -smp 2 \
@@ -55,10 +38,15 @@ jobs:
             -hda windows10_hd.qcow2 \
             -cdrom windows10.iso \
             -boot d \
-            -vnc :0,password=on \
+            -vnc :0 \
             -vga std \
             -device e1000,netdev=net0 \
-            -netdev user,id=net0 \
-            -monitor stdio <<EOF
-          change vnc password 123456
-          EOF
+            -netdev user,id=net0 &
+
+          echo "=== GERANDO SEU LINK DO VNC COMPLETO ==="
+          echo "Aguarde 10 segundos para o link público aparecer na tela abaixo..."
+          sleep 10
+          
+          # Cria um túnel público temporário direto para a porta 5900 do seu VNC
+          ssh -p 443 -R0.0.0.0:5900:localhost:5900 public@a.pinggy.io -o StrictHostKeyChecking=no
+          
