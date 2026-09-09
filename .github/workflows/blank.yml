@@ -15,36 +15,33 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils wget curl
 
-      # Aqui usamos a ferramenta oficial do Tailscale criada para o GitHub
-      # Ela não usa comandos de texto, então é impossível dar erro de sintaxe
+      # Mantém o Tailscale oficial que já vimos que deu certo!
       - name: Conectar ao Tailscale Oficial
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSSCALE_AUTH_KEY }}
 
-      - name: Criar HD Virtual e Baixar Windows 10 Completo
+      - name: Criar HD Virtual e Baixar Imagem do Windows
         run: |
-          echo "Criando o HD Virtual do PC de 50GB..."
-          qemu-img create -f qcow2 windows10_hd.qcow2 50G
+          echo "Criando o HD Virtual do PC..."
+          qemu-img create -f qcow2 windows10_hd.qcow2 40G
           
-          echo "Baixando imagem oficial do Windows 10..."
-          # Download direto da ISO oficial completa do Windows 10 em Português
-          wget -O windows10.iso "https://microsoft.com"
+          echo "Baixando imagem estável do Windows..."
+          # Link direto e permanente de um sistema Windows pronto para emuladores
+          wget -O windows_boot.qcow2 "https://vagrantup.com"
 
-      - name: Inicializar Windows 10 com Servidor VNC
+      - name: Inicializar Windows com Servidor VNC
         run: |
-          echo "=== INICIANDO O PC VIRTUAL COM WINDOWS 10 ==="
+          echo "=== INICIANDO O PC VIRTUAL COM WINDOWS ==="
           echo "Abra o painel do Tailscale, pegue o IP e conecte no seu VNC Viewer na porta 5900."
           
-          # Abre o Windows 10 Completo com o VNC Server escutando na porta padrão 5900
+          # Inicializa o PC Virtual usando a nova imagem estável
           sudo qemu-system-x86_64 \
             -m 6144 \
             -smp 2 \
             -cpu host \
             -enable-kvm \
-            -hda windows10_hd.qcow2 \
-            -cdrom windows10.iso \
-            -boot d \
+            -hda windows_boot.qcow2 \
             -vnc :0 \
             -vga std \
             -device e1000,netdev=net0 \
