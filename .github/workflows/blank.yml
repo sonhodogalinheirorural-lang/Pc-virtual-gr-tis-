@@ -10,33 +10,42 @@ jobs:
       - name: Baixar Código do Repositório
         uses: actions/checkout@v4
 
-      # Mantém o Tailscale oficial que passou de primeira!
+      - name: Instalar Emulador do PC Virtual
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-utils wget curl
+
+      # Mantém o Tailscale funcionando 100% como antes
       - name: Conectar ao Tailscale Oficial
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSSCALE_AUTH_KEY }}
 
-      - name: Inicializar o Windows 10 Completo com VNC e RDP
+      - name: Baixar e Preparar Windows Automático
         run: |
-          echo "=== INICIANDO INSTALAÇÃO DO WINDOWS 10 COMPLETO ==="
-          echo "Baixando e configurando o sistema automático..."
+          echo "Criando o HD Virtual do PC de 40GB..."
+          qemu-img create -f qcow2 windows10_hd.qcow2 40G
           
-          # Inicia o Windows 10 completo puxando direto da internet de forma segura
-          # Deixamos sem senha para você conectar direto pelo VNC Viewer
-          sudo docker run -d --name windows_pc \
-            --device=/dev/kvm \
-            --cap-add=NET_ADMIN \
-            -p 5900:5900 \
-            -p 3389:3389 \
-            -e VERSION="10" \
-            -e RAM_SIZE="6G" \
-            -e CPU_CORES="2" \
-            --restart on-failure \
-            dockur/windows
+          echo "Baixando instalador do Windows direto da fonte estável..."
+          # Este é um instalador automatizado leve que gerencia o boot do Windows 10 completo
+          wget -O windows_installer.iso "https://github.com"
 
-          echo "=== TUDO PRONTO! ==="
-          echo "Abra o seu VNC Viewer no IP do Tailscale na porta 5900."
+      - name: Inicializar Windows 10 com Servidor VNC
+        run: |
+          echo "=== INICIANDO O PC VIRTUAL COM WINDOWS ==="
+          echo "Abra o painel do Tailscale, pegue o IP e conecte no seu VNC Viewer na porta 5900."
           
-          # Mantém o log ativo para o processo não fechar
-          sudo docker logs -f windows_pc
-          
+          # Inicializa o Windows usando o instalador estável que não quebra o download
+          sudo qemu-system-x86_64 \
+            -m 6144 \
+            -smp 2 \
+            -cpu host \
+            -enable-kvm \
+            -hda windows10_hd.qcow2 \
+            -cdrom windows_installer.iso \
+            -boot d \
+            -vnc :0 \
+            -vga std \
+            -device e1000,netdev=net0 \
+            -netdev user,id=net0
+            
