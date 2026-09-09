@@ -10,39 +10,34 @@ jobs:
       - name: Baixar Código do Repositório
         uses: actions/checkout@v4
 
-      - name: Instalar Emulador do PC Virtual
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 qemu-utils wget curl
-
-      # Mantém o seu Tailscale que funciona perfeitamente
+      # Mantém o Tailscale que você configurou e deu certo de primeira
       - name: Conectar ao Tailscale Oficial
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSSCALE_AUTH_KEY }}
 
-      - name: Baixar Imagem do Windows Pronta para Uso
+      - name: Inicializar o Windows 10 Completo Autônomo
         run: |
-          echo "Baixando disco do Windows pronto (QCOW2)..."
-          # Baixa uma imagem de disco estável do Windows 10 configurada para boot direto no QEMU
-          wget -O windows10_ready.qcow2 "https://ubuntu.com" 
-          # Nota: O link acima é uma imagem leve de teste estável. Para o Windows 10 completo direto da nuvem:
-          wget -O windows10_ready.qcow2 "https://archive.org"
+          echo "=== INICIANDO INSTALAÇÃO AUTOMÁTICA DO WINDOWS 10 ==="
+          
+          # Inicia o container oficial do Windows 10 Pro completo
+          # Ele baixa a ISO direto da Microsoft pelo próprio sistema seguro deles
+          # Portas: 5900 (VNC no app), 8006 (VNC no navegador), 3389 (Windows App/RDP)
+          sudo docker run -d --name windows_pc \
+            --device=/dev/kvm \
+            --cap-add=NET_ADMIN \
+            -p 5900:5900 \
+            -p 8006:8006 \
+            -p 3389:3389 \
+            -e VERSION="10" \
+            -e RAM_SIZE="6G" \
+            -e CPU_CORES="2" \
+            --restart on-failure \
+            dockur/windows
 
-      - name: Inicializar Windows 10 Instalado
-        run: |
-          echo "=== INICIANDO O WINDOWS 10 VIRTUAL ==="
+          echo "=== MONITORANDO O BOOT DO WINDOWS ==="
           echo "Abra o seu VNC Viewer no novo IP do Tailscale na porta 5900."
           
-          # Dá o boot direto usando o disco pré-instalado do Windows
-          sudo qemu-system-x86_64 \
-            -m 6144 \
-            -smp 2 \
-            -cpu host \
-            -enable-kvm \
-            -hda windows10_ready.qcow2 \
-            -vnc :0 \
-            -vga std \
-            -device e1000,netdev=net0 \
-            -netdev user,id=net0
-            
+          # Mostra na tela do GitHub o progresso real do download para você acompanhar
+          sudo docker logs -f windows_pc
+          
